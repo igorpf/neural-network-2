@@ -57,19 +57,29 @@ class DecisionTree():
         originalAttrList = []
         for i in self.attrList:
             originalAttrList.append(i)
-        #while len(self.attrList) > self.m:
-        #    del self.attrList[randint(0,len(self.attrList) - 1)]
+        while len(self.attrList) > self.m:
+            del self.attrList[randint(0,len(self.attrList) - 1)]
         gains = []
         for attribute in self.attrList:
             groups = []
-            for value in possibleValuesList[attribute]:
-                group = []
+            if len(possibleValuesList[attribute]) == 1:
+                groups += [[]]
+                groups += [[]]
                 for i in range(len(self.x)):
-                    if(self.x[i][attribute] == value):
-                        group.append(self.y[i])
-                groups += [group]
+                    if(self.x[i][attribute] <= possibleValuesList[attribute][0]):
+                        groups[0].append(self.y[i])
+                    else:
+                        groups[1].append(self.y[i])
+                #print groups
+            else:
+                for value in possibleValuesList[attribute]:
+                    group = []
+                    for i in range(len(self.x)):
+                        if(self.x[i][attribute] == value):
+                            group.append(self.y[i])
+                    groups += [group]
             gains += [(attribute, gain(self.y, groups))]
-        print gains
+        #print gains
         bestGain = -1000
         bestAttribute = 0
         for g in gains:        
@@ -84,15 +94,30 @@ class DecisionTree():
             if i != bestAttribute:
                 attrList_children.append(i)
 
-        for value in possibleValuesList[bestAttribute]:
+        if len(possibleValuesList[bestAttribute]) > 1:
+            for value in possibleValuesList[bestAttribute]:
+                x_child = []
+                y_child = []
+                for i in range(len(self.x)):
+                    if(self.x[i][bestAttribute] == value):
+                        x_child.append(self.x[i])
+                        y_child.append(self.y[i])
+                self.children += [DecisionTree(x_child, y_child, attrList_children, self.possibleValuesList, self.m)]
+        else:
             x_child = []
             y_child = []
             for i in range(len(self.x)):
-                if(self.x[i][bestAttribute] == value):
+                if(self.x[i][bestAttribute] <= possibleValuesList[bestAttribute][0]):
                     x_child.append(self.x[i])
                     y_child.append(self.y[i])
             self.children += [DecisionTree(x_child, y_child, attrList_children, self.possibleValuesList, self.m)]
-
+            x_child = []
+            y_child = []
+            for i in range(len(self.x)):
+                if(self.x[i][bestAttribute] > possibleValuesList[bestAttribute][0]):
+                    x_child.append(self.x[i])
+                    y_child.append(self.y[i])
+            self.children += [DecisionTree(x_child, y_child, attrList_children, self.possibleValuesList, self.m)]
        
         for child in self.children:
             if len(child.attrList) > 0 and len(set(child.y)) > 1:
@@ -110,9 +135,15 @@ class DecisionTree():
         if self.isPure:
             return self.predictedClass
         else:
-            for child in range(len(self.children)):
-                if example[self.selectedAttribute] == self.possibleValuesList[self.selectedAttribute][child]:
-                    return self.children[child].predict(example)
+            if len(self.possibleValuesList[self.selectedAttribute]) == 1:
+                if example[self.selectedAttribute] <= self.possibleValuesList[self.selectedAttribute][0]:
+                    return self.children[0].predict(example)
+                else:
+                    return self.children[1].predict(example)
+            else:
+                for child in range(len(self.children)):
+                    if example[self.selectedAttribute] == self.possibleValuesList[self.selectedAttribute][child]:
+                        return self.children[child].predict(example)
 
     def printTree(self, level = 0):
         if self.isPure:
@@ -125,18 +156,25 @@ class DecisionTree():
                     print "    ",
                 self.children[child].printTree(level+1)  
 
-def preprocessing(ds):
+def preprocessing(f):
+    ds = DataSet(f)
     x = [[ds.dataMatrix[i % len(ds.dataMatrix)][j] for j in range(len(ds.dataMatrix[0]) - 1)] for i in range(len(ds.dataMatrix))]
     y = [ds.dataMatrix[i % len(ds.dataMatrix)][-1] for i in range(len(ds.dataMatrix))]
     attrList = []
     possibleValuesList = []
     for i in range(len(x[0])):
         attrList.append(i)
-        possibleValues = []
-        for instance in x:
-            if not (instance[i] in possibleValues):
-                possibleValues.append(instance[i])
-        possibleValuesList += [possibleValues]
+        if f.numericalAttributes[i] == 0:
+            possibleValues = []
+            for instance in x:
+                if not (instance[i] in possibleValues):
+                    possibleValues.append(instance[i])
+            possibleValuesList += [possibleValues]
+        else:
+            total = 0
+            for instance in x:
+                total += instance[i]
+            possibleValuesList += [[total / len(x)]]
     return x, y, attrList, possibleValuesList
 
 def entropy(group):
@@ -158,16 +196,18 @@ def gain(y, groups):
 
 if __name__ == '__main__':
 
-    f = files["test"]
-    ds = DataSet(f)
+    f = files["cmc"]
     
-    x, y, attrList, possibleValuesList = preprocessing(ds)
-    
-    dt = DecisionTree(x,y, attrList, possibleValuesList, int(len(x[0])**0.5))
+    x, y, attrList, possibleValuesList = preprocessing(f)
+
+    print possibleValuesList
+
+    dt = DecisionTree(x,y, attrList, possibleValuesList, int(len(x[0])**0.5)) # **1 for test dataset, **0.5 for the other ones
     dt.training()
 
     print "\nDecision Tree:\n"
     dt.printTree()
     
-    #example = [2,1,0,1]
-    #print dt.predict(example)
+    example = [0,1,2,1,1,1,2,2,1]
+    print "\n", dt.predict(example)
+
