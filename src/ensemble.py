@@ -4,7 +4,10 @@
 from files import files
 from random import randint
 from main import preprocessing, DecisionTree, DataSet
-from bootstrapping import bootstrap
+from bootstrapping import bootstrap, fold
+
+def flatten(l):
+    return [item for sublist in l for item in sublist]
 
 class Ensemble(object):
     def __init__(self, file, ntree):
@@ -16,14 +19,6 @@ class Ensemble(object):
         dt.training(possibleValuesList)
         # dt.printTree()
         return dt
-    def splitDataset(self, dataset, trainRatio = 0.8):
-        trainSize = int(len(dataset) * trainRatio)
-        train = []
-        for i in range(trainSize):
-            selected = randint(0, len(dataset)-1)
-            train.append(dataset.pop(selected))
-        return (train, dataset)
-  
     # - divide 80/20
     # - 
     # - cria ntree bootstraps (dentro dos 80)
@@ -34,13 +29,21 @@ class Ensemble(object):
     # - for test in tests:
     #     - classifica entre todas as árvores e faz votação
     # - 
-    def createRandomForest(self):
-        f = files[self.file]
-        ds = DataSet(f)
-        data = self.splitDataset(ds.dataMatrix)
-        train = data[0]
-        tests = data[1]        
-        
+
+    # k folds
+    def crossValidation(self, f, ds, folds):
+        k = len(folds)        
+        accuracies = []
+        for i in range(k):
+            train = flatten(folds[:i] + folds[i:])
+            test = folds[i]
+            trees = self.createRandomForest(f,ds,train)
+            correct, total = self.evaluatePrediction(trees, test)
+            # print "\nPrediction: {} out of {}".format(correct, total)
+            accuracies.append(correct/float(total)) 
+        return self.getForestPerformance(accuracies)
+
+    def createRandomForest(self, f, ds, train):
         bootstraps = bootstrap(matrix=train, n = self.ntree)
         trees = []
         accuracies = []
@@ -48,30 +51,16 @@ class Ensemble(object):
             ds.dataMatrix = boots[0]
             x, y, attrList, possibleValuesList = preprocessing(f,ds)
             tree = self.generateTree(x, y, attrList, possibleValuesList)        
-            # print boots
-            correct = 0
-            for test in boots[1]:
-                if tree.predict(test[:-1]) == test[-1]:
-                    correct += 1
             trees.append(tree)      
-            accuracies.append(correct / float( len(boots[1]) ) )
-            # print "\nPrediction: {} out of {}".format(correct, len(boots[1]))
-            # print "\n--------------------\n"
+        return trees
 
-        # self.evaluatePrediction(trees,tests)
-        return trees, accuracies
-    def getForestPrediction(self, trees, data):
-        votes = {}
-        for tree in trees:
-            prediction = tree.predict(data)
-            votes[prediction] = votes.get(prediction, 0) + 1
-        return max(votes)
     def getForestPerformance(self, accuracies):
         # print accuracies
         mean = reduce(lambda x,y: x+y, accuracies) / float(len(accuracies))
         stdDeviation = (reduce(lambda x,y: x+y, 
                             map(lambda x: (x-mean) ** 2, accuracies)) / (len(accuracies)-1) ) ** 0.5
         return mean, stdDeviation
+    
     def evaluatePrediction(self, trees, tests):
         correct = 0
         for test in tests:            
@@ -79,6 +68,13 @@ class Ensemble(object):
             # print "\nPrediction: {}, real: {}".format(prediction, test[-1])
             if prediction == test[-1]:
                 correct += 1
-        print "\nPrediction: {} out of {}".format(correct, len(tests))
+        # print "\nPrediction: {} out of {}".format(correct, len(tests))
+        return correct, len(tests)
 
+    def getForestPrediction(self, trees, data):
+        votes = {}
+        for tree in trees:
+            prediction = tree.predict(data)
+            votes[prediction] = votes.get(prediction, 0) + 1
+        return max(votes)
             
