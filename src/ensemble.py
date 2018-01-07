@@ -34,42 +34,50 @@ class Ensemble(object):
     # - for test in tests:
     #     - classifica entre todas as árvores e faz votação
     # - 
-    def createEnsemble(self):
+    def createRandomForest(self):
         f = files[self.file]
         ds = DataSet(f)
         data = self.splitDataset(ds.dataMatrix)
         train = data[0]
         tests = data[1]        
         
-        bootstraps = bootstrap(matrix=data[0], n = self.ntree)
+        bootstraps = bootstrap(matrix=train, n = self.ntree)
         trees = []
         accuracies = []
         for i, boots in enumerate(bootstraps):
             ds.dataMatrix = boots[0]
             x, y, attrList, possibleValuesList = preprocessing(f,ds)
-            tree = self.generateTree(x, y, attrList, possibleValuesList)
-            
+            tree = self.generateTree(x, y, attrList, possibleValuesList)        
             # print boots
             correct = 0
             for test in boots[1]:
                 if tree.predict(test[:-1]) == test[-1]:
                     correct += 1
             trees.append(tree)      
-            accuracies.append(correct/len(test))
+            accuracies.append(correct / float( len(boots[1]) ) )
             # print "\nPrediction: {} out of {}".format(correct, len(boots[1]))
             # print "\n--------------------\n"
+
         # self.evaluatePrediction(trees,tests)
         return trees, accuracies
+    def getForestPrediction(self, trees, data):
+        votes = {}
+        for tree in trees:
+            prediction = tree.predict(data)
+            votes[prediction] = votes.get(prediction, 0) + 1
+        return max(votes)
+    def getForestPerformance(self, accuracies):
+        # print accuracies
+        mean = reduce(lambda x,y: x+y, accuracies) / float(len(accuracies))
+        stdDeviation = (reduce(lambda x,y: x+y, 
+                            map(lambda x: (x-mean) ** 2, accuracies)) / (len(accuracies)-1) ) ** 0.5
+        return mean, stdDeviation
     def evaluatePrediction(self, trees, tests):
         correct = 0
-        for test in tests:
-            votes = {}
-            for tree in trees:
-                prediction = tree.predict(test[:-1])
-                votes[prediction] = votes.get(prediction, 0) + 1
-            winner = max(votes)
-            # print "\nPrediction: {}, real: {}".format(winner, test[-1])
-            if winner == test[-1]:
+        for test in tests:            
+            prediction = self.getForestPrediction(trees, test[:-1])
+            # print "\nPrediction: {}, real: {}".format(prediction, test[-1])
+            if prediction == test[-1]:
                 correct += 1
         print "\nPrediction: {} out of {}".format(correct, len(tests))
 
