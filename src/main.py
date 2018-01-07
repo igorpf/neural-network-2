@@ -3,9 +3,12 @@
 
 import numpy as np
 from files import files
-from random import randint
+from random import randint, seed
 import math
 import sys
+
+# Seed to keep results deterministic
+seed(9001)
 
 class DataSet():
     def __init__(self, file):
@@ -53,10 +56,8 @@ class DecisionTree():
         self.predictedClass = -1
         self.selectedAttribute = -1
 
-    def training(self):
-        originalAttrList = []
-        for i in self.attrList:
-            originalAttrList.append(i)
+    def training(self, possibleValuesList):
+        originalAttrList = map(lambda x:x, self.attrList)
         while len(self.attrList) > self.m:
             del self.attrList[randint(0,len(self.attrList) - 1)]
         gains = []
@@ -121,7 +122,7 @@ class DecisionTree():
        
         for child in self.children:
             if len(child.attrList) > 0 and len(set(child.y)) > 1:
-                child.training()
+                child.training(possibleValuesList)
             else:
                 child.isPure = True
                 if not child.y:
@@ -156,8 +157,11 @@ class DecisionTree():
                     print "    ",
                 self.children[child].printTree(level+1)  
 
-def preprocessing(f):
-    ds = DataSet(f)
+# ds can be passed as an argument if the dataset
+# needs to be previously processed (to separate 80/20, for instance)
+def preprocessing(f, ds=None):
+    if ds == None:
+        ds = DataSet(f)
     x = [[ds.dataMatrix[i % len(ds.dataMatrix)][j] for j in range(len(ds.dataMatrix[0]) - 1)] for i in range(len(ds.dataMatrix))]
     y = [ds.dataMatrix[i % len(ds.dataMatrix)][-1] for i in range(len(ds.dataMatrix))]
     attrList = []
@@ -194,20 +198,20 @@ def gain(y, groups):
     info = entropy(y)
     return info - infoA
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
-    f = files["cmc"]
+#     f = files["cmc"]
     
-    x, y, attrList, possibleValuesList = preprocessing(f)
+#     x, y, attrList, possibleValuesList = preprocessing(f)
 
-    print possibleValuesList
+#     print possibleValuesList
 
-    dt = DecisionTree(x,y, attrList, possibleValuesList, int(len(x[0])**0.5)) # **1 for test dataset, **0.5 for the other ones
-    dt.training()
+#     dt = DecisionTree(x,y, attrList, possibleValuesList, int(len(x[0])**0.5)) # **1 for test dataset, **0.5 for the other ones
+#     dt.training(possibleValuesList)
 
-    print "\nDecision Tree:\n"
-    dt.printTree()
+#     print "\nDecision Tree:\n"
+#     dt.printTree()
     
-    example = [0,1,2,1,1,1,2,2,1]
-    print "\n", dt.predict(example)
+#     example = [0,1,2,1,1,1,2,2,1]
+#     print "\n", dt.predict(example)
 

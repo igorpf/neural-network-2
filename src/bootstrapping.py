@@ -7,9 +7,9 @@ from random import randint
 # matrix
 # classIndex -> which position is the class predicted? default: last
 # n -> number of bootstraps
-# k -> bootstraps size
+# r -> bootstraps size
 # useIndex -> create bootstraps of the indices instead of data. Use for testing purposes
-def bootstrap(matrix, classIndex=-1, n=10,r=None, useIndex=False):    
+def bootstrap(matrix, classIndex=-1, n=5,r=None, useIndex=False):    
     # list of tuples in the form of (training set, test set)   
     matrixSize = len(matrix)
     if r==None:
