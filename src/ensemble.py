@@ -34,7 +34,7 @@ class Ensemble(object):
         k = len(folds)        
         accuracies = []
         for i in range(k):
-            train = flatten(folds[:i] + folds[i:])
+            train = flatten(folds[:i] + folds[i+1:])
             test = folds[i]
             trees = self.createRandomForest(f,ds,train)
             correct, total = self.evaluatePrediction(trees, test)
