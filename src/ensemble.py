@@ -13,7 +13,6 @@ class Ensemble(object):
     def __init__(self, file, ntree):
         self.file = file
         self.ntree = ntree
-        self.trees = []
     def generateTree(self, x,y, attrList, possibleValuesList):
         dt = DecisionTree(x,y, attrList, possibleValuesList, int(len(x[0])**0.5)) # **1 for test dataset, **0.5 for the other ones
         dt.training(possibleValuesList)

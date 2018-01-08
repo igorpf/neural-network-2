@@ -7,19 +7,19 @@ sys.path.append('../src')
 
 from files import files
 from main import DataSet
-from ensemble import Ensemble
+from ensemble import Ensemble, flatten
 from bootstrapping import fold
 
 def test(file):
-    print "\n---------------------------------------------------\n"
+    # print "\n---------------------------------------------------\n"
     print "Testing bootstrap for: ", file        
     f = files[file]
     ds = DataSet(f)
     folds = fold(ds.dataMatrix, f.classProportion, f.classIndex, 5)
     train = folds[:-1]
     test = folds[-1]
-    # ntrees = [2,3,5,10, 15, 20, 30]
-    ntrees = [2,3,5]
+    ntrees = [2,3,5,10, 15, 20, 30, 40, 50]
+    # ntrees = [2,3,5, 10]
 
     performance = {}
     for ntree in ntrees:        
@@ -28,10 +28,14 @@ def test(file):
         performance[ntree] = mean
         print "ntree {}, mean {}, stdDev {}".format(ntree, mean, stdDev)
         
-    bestNTree = sorted(performance, key=performance.get, reverse=True)
+    bestNTree = sorted(performance, key=performance.get, reverse=True)[0]
     #TODO: evaluate best ntree. Which trained random forest should we get? 
     # Do we train a new one?
-
+    # print test
+    ensemble.ntree = bestNTree
+    trees = ensemble.createRandomForest(f,ds,flatten(train))
+    correct, total = ensemble.evaluatePrediction(trees, test)
+    print "\nBest ntree:{} Prediction: {} out of {}, accuracy {}".format(bestNTree,correct, len(test), correct/float(len(test)))
     print "\n---------------------------------------------------\n"
 
 if __name__ == '__main__':
