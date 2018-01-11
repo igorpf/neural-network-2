@@ -4,11 +4,12 @@
 import numpy as np
 from files import files
 from random import randint, seed
+from operator import itemgetter
 import math
 import sys
 
 # Seed to keep results deterministic
-seed(9001)
+#seed(9001)
 
 class DataSet():
     def __init__(self, file):
@@ -54,32 +55,40 @@ class DecisionTree():
         self.m = m
         self.isPure = False
         self.predictedClass = -1
+        self.gain = 0
         self.selectedAttribute = -1
 
-    def training(self, possibleValuesList):
+    def training(self):
         originalAttrList = map(lambda x:x, self.attrList)
         while len(self.attrList) > self.m:
             del self.attrList[randint(0,len(self.attrList) - 1)]
         gains = []
         for attribute in self.attrList:
             groups = []
-            if len(possibleValuesList[attribute]) == 1:
+            if len(self.possibleValuesList[attribute]) == 1: # numerical attributes
+                #print attribute
+                #print "antes ",
+                #print self.possibleValuesList[attribute][0]
+                #self.possibleValuesList[attribute][0] = calculateBestThreshold(self.x, self.y, attribute) # Comment this line to use the average
+                #print "depois ",
+                #print self.possibleValuesList[attribute][0]
                 groups += [[]]
                 groups += [[]]
                 for i in range(len(self.x)):
-                    if(self.x[i][attribute] <= possibleValuesList[attribute][0]):
+                    if(self.x[i][attribute] <= self.possibleValuesList[attribute][0]):
                         groups[0].append(self.y[i])
                     else:
                         groups[1].append(self.y[i])
                 #print groups
             else:
-                for value in possibleValuesList[attribute]:
+                for value in self.possibleValuesList[attribute]:
                     group = []
                     for i in range(len(self.x)):
                         if(self.x[i][attribute] == value):
                             group.append(self.y[i])
                     groups += [group]
             gains += [(attribute, gain(self.y, groups))]
+
         #print gains
         bestGain = -1000
         bestAttribute = 0
@@ -87,7 +96,7 @@ class DecisionTree():
             if g[1] > bestGain:
                 bestGain = g[1]
                 bestAttribute = g[0]
-
+        self.gain = bestGain
         self.selectedAttribute = bestAttribute
 
         attrList_children = []
@@ -95,8 +104,8 @@ class DecisionTree():
             if i != bestAttribute:
                 attrList_children.append(i)
 
-        if len(possibleValuesList[bestAttribute]) > 1:
-            for value in possibleValuesList[bestAttribute]:
+        if len(self.possibleValuesList[bestAttribute]) > 1: # categorical attributes
+            for value in self.possibleValuesList[bestAttribute]:
                 x_child = []
                 y_child = []
                 for i in range(len(self.x)):
@@ -104,30 +113,30 @@ class DecisionTree():
                         x_child.append(self.x[i])
                         y_child.append(self.y[i])
                 self.children += [DecisionTree(x_child, y_child, attrList_children, self.possibleValuesList, self.m)]
-        else:
+        else: # numerical attributes
             x_child = []
             y_child = []
             for i in range(len(self.x)):
-                if(self.x[i][bestAttribute] <= possibleValuesList[bestAttribute][0]):
+                if(self.x[i][bestAttribute] <= self.possibleValuesList[bestAttribute][0]):
                     x_child.append(self.x[i])
                     y_child.append(self.y[i])
             self.children += [DecisionTree(x_child, y_child, attrList_children, self.possibleValuesList, self.m)]
             x_child = []
             y_child = []
             for i in range(len(self.x)):
-                if(self.x[i][bestAttribute] > possibleValuesList[bestAttribute][0]):
+                if(self.x[i][bestAttribute] > self.possibleValuesList[bestAttribute][0]):
                     x_child.append(self.x[i])
                     y_child.append(self.y[i])
             self.children += [DecisionTree(x_child, y_child, attrList_children, self.possibleValuesList, self.m)]
        
         for child in self.children:
             if len(child.attrList) > 0 and len(set(child.y)) > 1:
-                child.training(possibleValuesList)
+                child.training()
             else:
                 child.isPure = True
-                if not child.y:
+                if not child.y: # child is empty
                     child.predictedClass = max(set(self.y), key=self.y.count)
-                elif len(set(child.y)) == 1:
+                elif len(set(child.y)) == 1: # child is pure
                     child.predictedClass = child.y[0]
                 else: #attrList is empty
                     child.predictedClass = max(set(child.y), key=child.y.count)
@@ -150,7 +159,7 @@ class DecisionTree():
         if self.isPure:
             print "class =", int(self.predictedClass),
         else:
-            print "Attribute for division: " + str(self.selectedAttribute),
+            print "Attribute for division: " + str(self.selectedAttribute) + " (gain: " + str(self.gain) + ")",
             for child in range(len(self.children)):
                 print "\n",
                 for i in range(level+1):
@@ -198,20 +207,44 @@ def gain(y, groups):
     info = entropy(y)
     return info - infoA
 
-# if __name__ == '__main__':
+def calculateBestThreshold(x, y, attributeIndex):
+    for i in range(len(y)):
+        x[i] = x[i] + [y[i]]
 
-#     f = files["cmc"]
+    x = sorted(x, key=itemgetter(attributeIndex))
+    values = []
+    gains = []
+    for i in range(len(x) - 1):
+        if x[i][-1] != x[i+1][-1]:
+            newValue = (x[i][attributeIndex] + x[i+1][attributeIndex]) / 2
+            values.append(newValue)
+            groups = [[],[]]
+            for j in x:
+                if j[attributeIndex] <= newValue:
+                    groups[0].append(j[-1])
+                else:
+                    groups[1].append(j[-1])
+            gains.append(gain(y,groups))
+    #print values
+    #print gains
+    #print values[np.argmax(gains)]
+    return values[np.argmax(gains)]
     
-#     x, y, attrList, possibleValuesList = preprocessing(f)
 
-#     print possibleValuesList
+"""if __name__ == '__main__':
 
-#     dt = DecisionTree(x,y, attrList, possibleValuesList, int(len(x[0])**0.5)) # **1 for test dataset, **0.5 for the other ones
-#     dt.training(possibleValuesList)
-
-#     print "\nDecision Tree:\n"
-#     dt.printTree()
+    f = files["haberman"]
     
-#     example = [0,1,2,1,1,1,2,2,1]
-#     print "\n", dt.predict(example)
+    x, y, attrList, possibleValuesList = preprocessing(f)
+
+    #print possibleValuesList
+
+    dt = DecisionTree(x,y, attrList, possibleValuesList, round(len(x[0])**0.5)) # **1 for test dataset, **0.5 for the other ones
+    dt.training()
+
+    print "\nDecision Tree:\n"
+    dt.printTree()
+
+    example = [0,1,2,1,1,1,2,2,1]
+    print "\n", dt.predict(example)"""
 

@@ -14,8 +14,8 @@ class Ensemble(object):
         self.file = file
         self.ntree = ntree
     def generateTree(self, x,y, attrList, possibleValuesList):
-        dt = DecisionTree(x,y, attrList, possibleValuesList, int(len(x[0])**0.5)) # **1 for test dataset, **0.5 for the other ones
-        dt.training(possibleValuesList)
+        dt = DecisionTree(x,y, attrList, possibleValuesList, round(len(x[0]))**0.5) # **1 for test dataset, **0.5 for the other ones
+        dt.training()
         # dt.printTree()
         return dt
     # - divide 80/20

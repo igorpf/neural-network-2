@@ -15,7 +15,7 @@ def test(file, examples):
     print possibleValuesList
 
     dt = DecisionTree(x,y, attrList, possibleValuesList, int(len(x[0])**0.5)) # **1 for test dataset, **0.5 for the other ones
-    dt.training(possibleValuesList)
+    dt.training()
 
     print "\nDecision Tree:\n"
     dt.printTree()
